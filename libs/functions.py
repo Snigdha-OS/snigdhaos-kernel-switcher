@@ -168,7 +168,7 @@ def get_latest_kernel_updates(self):
                     logger.info("Update Check Not Required!")
                     return False
             else:
-                logger.info("No Cache File Preset at the Moment!")
+                logger.info("No Cache File Present at the Moment!")
                 if not os.path.exists(cache_update):
                     last_update_check = datetime.datetime.now().strftime("%Y-%m-%d")
                     with open(cache_update, mode="w", encoding="utf-8") as f:
