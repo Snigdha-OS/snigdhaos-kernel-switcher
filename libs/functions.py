@@ -5,6 +5,7 @@ from os import makedirs
 import logging
 import locale
 import datetime
+from datetime import timedelta
 import sys
 import psutil
 import subprocess
@@ -16,6 +17,9 @@ import queue
 from logging.handlers import TimedRotatingFileHandler
 import tomlkit
 import shutil
+import time
+
+import Kernel
 
 import gi
 gi.require_version("Gtk", "3.0") # GTK 2.0 is dead!
@@ -314,5 +318,109 @@ def install_archive_kernel(self):
                 f"<b>There have been errors, please review the log</b>",
                 priority=GLib.PRIORITY_DEFAULT,
                 )
+        if check_kernel_installed(self.kernel.name + "-headers") and error is False:
+            self.kernel_state_queue.put(0, "install")
+        else:
+            self.kernel_state_queue.put(1, "install")
+            self.errors_found = True
+            self.messages_queue.put(event)
+        if check_kernel_installed(self.kernel.name) and error is False:
+            self.kernel_state_queue.put(0, "install")
+        else:
+            self.kernel_state_queue.put(1, "install")
+            self.errors_found = True
+        self.kernel_state_queue.put(None)
+    except Exception as e:
+        logger.error("Found error in install_archive_kernel %s" %e)
 
-def wait_for_pacman_process():  
+    finally:
+        if os.path.exists(self.lockfile):
+            os.unlink(self.lockfile)
+
+def check_kernel_installed(name):
+    try:
+        logger.info("Checking kernel package %s is installed!" %name)
+        check_cmd_str = ["pacman", "-Q", name]
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Running Command: %s" % check_cmd_str)
+        
+        process_kernel_query = subprocess.Popen(check_cmd_str, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,env=locale_env)
+        out, err = process_kernel_query.communicate(timeout=process_timeout)
+        if process_kernel_query.returncode == 0:
+            for line in out.decode("utf-8").splitlines():
+                if line.split(" ")[0] == name:
+                    logger.info("Kernel Installed")
+                    return True
+        else:
+            logger.info("Kernel is not installed")
+            return False
+    except Exception as e:
+        logger.error("Found error in check_kernel_installed() %s" % e)
+
+def wait_for_pacman_process():
+    logger.info("Waiting For Pacman Process")
+    timeout = 120
+    i = 0
+    # need to check pacman lockfile
+    while check_pacman_lockfile():
+        time.sleep(0.1)
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Wait till pacman is locked!")
+        i += 1
+        if i == timeout:
+            logger.info("Timeout!")
+            break
+
+def check_pacman_lockfile():
+    return os.path.exists(pacman_lockfile)
+
+def read_cache(self):
+    try:
+        self.timestamp = None
+        with open(cache_file, "rb") as f:
+            data = tomlkit.load(f)
+            if len(data) == 0:
+                logger.error("%s is empty! delete it and restart the application" %cache_file)
+            name = None
+            headers = None
+            version = None
+            size = None
+            last_modified = None
+            file_format = None
+            if len(data) > 0:
+                self.timestamp = data["timestamp"]
+                self.cache_timestamp = data["timestamp"]
+                if self.timestamp:
+                    self.timestamp = datetime.datetime.strptime(self.timestamp, "%Y-%m-%d %H-%M-%S")
+                    delta = datetime.datetime.now() - self.timestamp
+                    if delta.days >= cache_days:
+                        logger.info("Cache is older than 5 days! Refreshing...")
+                        refresh_cache(self)
+                    else:
+                        if delta.days > 0:
+                            logger.debug("Cache age: %s days." %delta.days)
+                        else:
+                            logger.debug("Cache is newer than 5 days!")
+                        kernels = data["kernel"]
+                        if len(kernels) > 1:
+                            for i in kernels:
+                                if (datetime.datetime.now().year - datetime.datetime.strptime(i["last_modified"], "%d-%b-%Y %H:%M").year <= 2):
+                                    cached_kernel_list.append(Kernel(i["name"],i["headers"],i["version"],i["size"],i["last_modified"],i["file_format"]))
+                            name = None
+                            headers = None
+                            version = None
+                            size = None
+                            last_modified = None
+                            file_format = None
+
+                            if len(cached_kernel_list) > 0:
+                                sorted(cached_kernel_list)
+                                logger.info("Kernel Cached Data has been processed!")
+                        else:
+                            logger.error("Cached File is Invalid! delete it and try again...")
+            else:
+                logger.error("Failed to read cache file!")
+    except Exception as e:
+        logger.error("Found error in read_cache() %s" %e)
+
+                    
