@@ -577,3 +577,56 @@ def check_kernel_installed(name):
     except Exception as e:
         logger.error("Found error in check_kernel_installed(): %s" %e)
 
+def uinstall(self):
+    try:
+        kernel_installed = check_kernel_installed(self.kernel.name)
+        logger.info("Installed Kernel: %s" % kernel_installed)
+        kernel_headers_installed = check_kernel_installed(self.kernel.name + "-headers")
+        logger.info("Installed Kernel Header: %s" %kernel_headers_installed)
+        uninstall_cmd_str = None
+        event_log = {}
+        if kernel_installed is True and kernel_headers_installed is True:
+            uninstall_cmd_str = ["pacman", "-Rs", self.kernel.name, self.kernel.name + "-headers", "--noconfirm"]
+        if kernel_installed is True and kernel_headers_installed is False:
+            uninstall_cmd_str = ["pacman", "-Rs", self.kernel.name, "--noconfirm"]
+        if kernel_installed == 0:
+            logger.info("Kernel Not Installed! Uninstallation is not Required!")
+            self.kernel_state_queue.put(0, "uninstall")
+            return
+        if uninstall_cmd_str is not None:
+            wait_for_pacman_process()
+            event = "%s [INFO]: Running %s\n" %(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), " ".join(uninstall_cmd_str))
+            self.messages_queue.put(event)
+            with subprocess.Popen(uninstall_cmd_str,stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,env=locale_env,bufsize=1) as process:
+                while True:
+                    if process.poll() is not None:
+                        break
+                    for i in process.stdout:
+                        if logger.getEffectiveLevel() == 10:
+                            print(i.strip())
+                        self.messages_queue.put(i)
+                        if ("error" in i.lower().strip() or "errors" in i.lower().strip()):
+                            self.errors_found = True
+                            break
+            if "headers" in uninstall_cmd_str:
+                if check_kernel_installed(self.kernel.name + "-headers") is True:
+                    self.kernel_state_queue.put(1, "uninstall")
+                    event = ("%s [ERROR]: Failed to Uninstall!\n" % datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+                    self.messages_queue.put(event)
+                else:
+                    self.kernel_state_queue.put(0, "uninstall")
+                    event = ("%s [INFO]: Uninstall Completed!\n" % datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+                    self.messages_queue.put(event)
+            else:
+                if check_kernel_installed(self.kernel.name) is True:
+                    self.kernel_state_queue.put(1, "uninstall")
+                    event = ("%s [ERROR]: Failed to Uninstall!\n" % datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+                    self.messages_queue.put(event)
+                else:
+                    self.kernel_state_queue.put(0, "uninstall")
+                    event = ("%s [INFO]: Uninstall Completed!\n" % datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+                    self.messages_queue.put(event)
+            self.kernel_state_queue.put(None)
+    except Exception as e:
+        logger.error("Found error in uninstall(): %s" %e)
+
