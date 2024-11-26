@@ -630,3 +630,41 @@ def uinstall(self):
     except Exception as e:
         logger.error("Found error in uninstall(): %s" %e)
 
+def get_community_kernels(self):
+    try:
+        logger.info("Fetching Community Kernel Insformation...")
+        for i in sorted(community_kernels_dict):
+            if community_kernels_dict[i][2] in pacman_repos_list:
+                pacman_repo = community_kernels_dict[i][2]
+                headers = community_kernels_dict[i][1]
+                name = i
+                query_cmd = ["pacman", "-Si", "%s/%s" % (pacman_repo, name)]
+                process_kernel_query = subprocess.Popen(query_cmd,shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=locale_env)
+                out,err = process_kernel_query.communicate(timeout=process_timeout)
+                version = None
+                install_size = None
+                build_date = None
+                if process_kernel_query.returncode == 0:
+                    for i in out.decode("utf-8").splitlines():
+                        if i.startswith("Version        :"):
+                            version = i.split("Version      :")[1].strip()
+                        if i.startswith("Installed Size        :"):
+                            install_size = i.split("Installed Size      :")[1].strip()
+                            if logger.getEffectiveLevel() == 10:
+                                logger.debug("Installed: %s | Kernel Size: %s" %(name, install_size))
+                            if "MiB" in install_size:
+                                if install_size.find(",") >= 0:
+                                    if logger.getEffectiveLevel() == 10:
+                                        logger.debug("Found ','-comma inside installed size!")
+                                    install_size = round(float(install_size.replace(",", ".").strip().replace("MiB","").strip())*1.048576,1)
+                                else:
+                                    install_size = round(float(install_size.replace("MiB","").strip())*1.048576,1)
+                        if i.startswith("Build Date     :"):
+                            build_date = i.split("Build Date     :")[1].strip()
+                            if name and version and install_size and build_date:
+                                community_kernels_list.append(CommunityKernel(name,headers,pacman_repo,version,build_date,install_size))
+        self.queue_community_kernel.put(community_kernels_list)
+    except Exception as e:
+        logger.error("Found error in get_community_kernel(): %s" %e)
+
+                        
