@@ -20,10 +20,11 @@ import shutil
 import time
 import re
 from libs.Kernel import Kernel, InstalledKernel, CommunityKernel
+# from ui import AboutDialog, FlowBox,KernelStack,ManagerGUI,MenuButton,ProgressWindow,SettingsWindow,SplashScreen,Stack
 from ui.MessageWindow import MessageWindow
 from queue import Queue
 import gi
-gi.require_version("Gtk", "3.0") # GTK 2.0 is dead!
+gi.require_version("Gtk", "3.0")
 from gi.repository import GLib
 
 
@@ -541,5 +542,38 @@ def print_all_threads():
 def update_progress_textview(self, line):
     try:
         if len(line) > 0:
-            self.textbuffer.insert_markup()
+            self.textbuffer.insert_markup(self.textbuffer.get_end_iter(), "%s" % line, len(" %s" % line))
+    except Exception as e:
+        logger.error("Found error in update_progress_textview(): %s" %e)
+    finally:
+        self.messages_queue.task_done()
+        text_mark_end = self.textbuffer.create_mark("end", self.textbuffer.get_end_iter(), False)
+        self.textview.scroll_mark_onscreen(text_mark_end)
+
+def monitor_messages_queue(self):
+    try:
+        while True:
+            message = self.messages_queue.get()
+            GLib.idle_add(update_progress_textview, self, message, priority=GLib.PRIORITY_DEFAULT)
+    except Exception as e:
+        logger.error("Found error in monitor_messages_queue(): %s" %e)
+
+def check_kernel_installed(name):
+    try:
+        logger.info("Checking if %s kernel is installed!" % name)
+        check_cmd_str = ["pacman", "-Q", name]
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Executing: %s" %check_cmd_str)
+        process_kernel_query = subprocess.Popen(check_cmd_str,shell=False,stdout=subprocess.PIPE,stderr=subprocess.STDOUT, env=locale_env)
+        out,err = process_kernel_query.communicate(timeout=process_timeout)
+        if process_kernel_query.returncode == 0:
+            for i in out.decode("utf-8").splitlines():
+                if i.split(" ")[0] == name:
+                    logger.info("Kernel is already installed!")
+                    return True
+        else:
+            logger.info("Kernel Not Installed!")
+            return False
+    except Exception as e:
+        logger.error("Found error in check_kernel_installed(): %s" %e)
 
