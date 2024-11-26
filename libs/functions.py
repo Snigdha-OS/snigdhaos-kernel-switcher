@@ -19,11 +19,14 @@ import tomlkit
 import shutil
 import time
 import re
-import Kernel
+from libs.Kernel import Kernel, InstalledKernel, CommunityKernel
+from ui.MessageWindow import MessageWindow
 from queue import Queue
 import gi
 gi.require_version("Gtk", "3.0") # GTK 2.0 is dead!
 from gi.repository import GLib
+
+
 
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -32,7 +35,7 @@ archlinux_mirror_archive_url = "https://archive.archlinux.org/"
 
 headers = {
     "Content-Type": "text/plain;charset=UTF-8",
-    "User-Agent": "",
+    "User-Agent": "Mozilla/5.0 (Linux x86_64) Gecko Firefox",
 }
 
 cache_days = 5
@@ -534,4 +537,9 @@ def print_all_threads():
     for thread in threading.enumerate():
         if logger.getEffectiveLevel() == 10:
             logger.debug("Thread: %s and State: %s" %(thread.name, thread.is_alive()))
+
+def update_progress_textview(self, line):
+    try:
+        if len(line) > 0:
+            self.textbuffer.insert_markup()
 
