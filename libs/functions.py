@@ -24,7 +24,7 @@ from libs.Kernel import Kernel, InstalledKernel, CommunityKernel
 from ui.MessageWindow import MessageWindow
 from queue import Queue
 import gi
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import GLib
 
 
