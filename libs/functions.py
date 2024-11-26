@@ -667,4 +667,91 @@ def get_community_kernels(self):
     except Exception as e:
         logger.error("Found error in get_community_kernel(): %s" %e)
 
-                        
+def install_community_kernel(self):
+    try:
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Cleaning pacman cache, Removing community packages...")
+        if os.path.exists(pacman_cache):
+            for root, dirs, files in os.walk(pacman_cache):
+                for name in files:
+                    for comm_kernel in community_kernels_dict.keys():
+                        if name.startswith(comm_kernel):
+                            if os.path.exists(os.path.join(root, name)):
+                                os.remove(os.path.join(root,name))
+        error = False
+        install_cmd_str = ["pacman", "-S", "%s/%s" %(self.kernel.repository, self.kernel.name), "%s/%s" %(self.kernel.repository, "%s-headers" % self.kernel.name), "--noconfirm", "--needed"]
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Running: %s" % install_cmd_str)
+        event = "%s [INFO] Running: %s\n" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), " ".join(install_cmd_str))
+        error = False
+        self.messages_queue.put(event)
+        with subprocess.Popen(install_cmd_str,stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, encoding=locale_env) as process:
+            while True:
+                if process.poll() is not None:
+                    break
+                for i in process.stdout:
+                    if logger.getEffectiveLevel() == 10:
+                        print(i.strip())
+                    self.messages_queue.put(i)
+                    if "no space left on device" in i.lower().strip():
+                        error = True
+                        break
+                    if "initcpio" in i.lower().strip():
+                        if "image generation successfull" in i.lower().strip():
+                            error = False
+                            break
+                    if "installation finished. no error reported" in i.lower().strip():
+                        error = False
+                        break
+                    if "error" in i.lower().strip():
+                        error = True
+                        break
+                time.sleep(0.1)
+        if error is True:
+            self.errors_found = True
+            error = True
+            GLib.idle_add(show_mw,self,"System Changes",f"Kernel {self.action} failed!\n" f"<b>Error Occured! Review Log File...</b>\n",priority=GLib.PRIORITY_DEFAULT)
+        if check_kernel_installed(self.kernel.name) and error is False:
+            self.kernel_state_queue.put(0, "install")
+            event = "%s [INFO] Installation %s has been completed!\n" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), self.kernel.name)
+            self.messages_queue.put(event)
+        else:
+            self.kernel_state_queue.put(1, "install")
+            event = "%s [ERROR] Failed to install %s !\n" % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), self.kernel.name)
+            self.errors_found = True
+            self.messages_queue.put(event)
+    except Exception as e:
+        logger.error("Found error in install_community_kernel(): %s" %e)
+    finally:
+        if os.path.exists(self.lockfile):
+            os.unlink(self.lockfile)
+
+def get_pacman_repos(package_name):
+    logger.info("Installed Kernel Information: %s" % package_name)
+    query_str = ["pacman", "-Qi", package_name]
+    try:
+        process_kernel_query = subprocess.Popen(query_str, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,env=locale_env)
+        out, err = process_kernel_query.communicate(timeout=process_timeout)
+        install_size = None
+        install_date = None
+        if process_kernel_query.returncode == 0:
+            for i in out.decode("utf-8").splitlines():
+                if i.startswith("Installed Size     :"):
+                    install_size = i.split("Installed Size      :")[1].strip()
+                    if logger.getEffectiveLevel() == 10:
+                        logger.debug("Installed Kernel: %s | Size: %s" % (package_name, install_size))
+                    if "MiB" in install_size:
+                        if install_size.find(",") >= 0:
+                            if logger.getEffectiveLevel() == 10:
+                                logger.debug("Found ','-comma inside installed size!")
+                                install_size = round(float(install_size.replace(",", ".").strip().replace("MiB","").strip())*1.048576,1)
+                            else:
+                                install_size = round(float(install_size.replace("MiB","").strip())*1.048576,1)
+                if i.startswith("Install Date       :"):
+                    install_date = i.split("Install Date        :")[1].strip()
+            return install_date
+        else:
+            logger.error("Failed to get Installed Kernel Information!")
+    except Exception as e:
+        logger.error("Found error in get_pacman_repos(): %s" %e)
+        
