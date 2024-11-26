@@ -485,7 +485,7 @@ def parse_archive_html(response, linux_kernel):
             if len(files) > 0:
                 if "-x86_64" in files[0]:
                     version = files[0].split("-x86_64")[0]
-                    file_format = files[04].split("-x86_64")[1]
+                    file_format = files[1].split("-x86_64")[1]
                     url = ("/packages/l/%s" % archlinux_mirror_archive_url + "/%s" % linux_kernel + "/%s" % files[0]) #URL Struct unknown to me!
                     if ".sig" not in file_format:
                         if len(line.rstrip().split("    ")) > 0:

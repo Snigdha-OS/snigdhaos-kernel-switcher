@@ -44,10 +44,31 @@ class Main(Gtk.Application):
         if os.path.exists(progress_lock_file):
             os.remove(progress_lock_file)
     
-    def snigdhal_handler(sig, frame):
-        Gtk.main_quit(0)
+def snigdhal_handler(sig, frame):
+    Gtk.main_quit(0)
     
-    # if __name__ == "__main__":
-    #     try:
-    #     except Exception as e:
-    #         return False
+if __name__ == "__main__":
+    try:
+        if not fn.os.path.isfile(lock_file):
+            with open(pid_file, "w") as f:
+                f.write(str(fn.os.getpid()))
+            app = Main()
+            app.run(None)
+        else:
+            md = Gtk.MessageDialog(parent=Main(), flags=0,message_type=Gtk.MessageType.INFO,buttons=Gtk.ButtonsType.YES_NO,text="%s Lock File Found!" % app_name)
+            md.format_secondary_markup("A %s lock file Found!\nAnother substance of %s is running!\nClick 'Yes' to remove the lockfile and restart the app." %(lock_file, app_name))
+            result = md.run()
+            md.destroy()
+            if result in (Gtk.ResponseType.OK, Gtk.ResponseType.YES):
+                pid = ""
+                if fn.os.path.exists(pid_file):
+                    with open(pid_file, "r") as f:
+                        i = f.read()
+                        pid = i.rstrip().lstrip()
+                else:
+                    fn.os.unlink(lock_file)
+                    fn.sys.exit(1)
+            else:
+                fn.sys.exit(1)
+    except Exception as e:
+        print("Error Occured in __main__")
