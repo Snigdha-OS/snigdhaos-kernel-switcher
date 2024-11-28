@@ -1,4 +1,5 @@
-#!/bin/python
+#!/usr/bin/python
+
 import os
 import libs.functions as fn
 from ui.ManagerGUI import ManagerGUI
