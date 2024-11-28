@@ -2,21 +2,13 @@ import gi
 import os
 import libs.functions as fn
 from ui.FlowBox import FlowBox, FlowBoxInstalled
-from ui.Stack import Stack
-from libs.Kernel import Kernel, InstalledKernel, CommunityKernel
-
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gio, Gdk
+from gi.repository import Gtk
 
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-
 class KernelStack:
-    def __init__(
-        self,
-        manager_gui,
-        **kwargs,
-    ):
+    def __init__(self,manager_gui,**kwargs):
         super().__init__(**kwargs)
         self.manager_gui = manager_gui
         self.flowbox_stacks = []
@@ -25,162 +17,80 @@ class KernelStack:
     def add_installed_kernels_to_stack(self, reload):
         vbox_header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
         vbox_header.set_name("vbox_header")
-
         lbl_heading = Gtk.Label(xalign=0.5, yalign=0.5)
         lbl_heading.set_name("label_flowbox_message")
         lbl_heading.set_text("%s" % "Installed kernels".upper())
-
         lbl_padding = Gtk.Label(xalign=0.0, yalign=0.0)
         lbl_padding.set_text(" ")
-
         grid_banner_img = Gtk.Grid()
-
-        image_settings = Gtk.Image.new_from_file(
-            os.path.join(base_dir, "images/48x48/akm-install.png")
-        )
-
+        image_settings = Gtk.Image.new_from_file(os.path.join(base_dir, "images/48x48/sks-install.png"))
         image_settings.set_icon_size(Gtk.IconSize.LARGE)
         image_settings.set_halign(Gtk.Align.START)
-
         grid_banner_img.attach(image_settings, 0, 1, 1, 1)
-        grid_banner_img.attach_next_to(
-            lbl_padding,
-            image_settings,
-            Gtk.PositionType.RIGHT,
-            1,
-            1,
-        )
-
-        grid_banner_img.attach_next_to(
-            lbl_heading,
-            lbl_padding,
-            Gtk.PositionType.RIGHT,
-            1,
-            1,
-        )
-
+        grid_banner_img.attach_next_to(lbl_padding,image_settings,Gtk.PositionType.RIGHT,1,1)
+        grid_banner_img.attach_next_to(lbl_heading,lbl_padding,Gtk.PositionType.RIGHT,1,1)
         vbox_header.append(grid_banner_img)
-
         label_installed_desc = Gtk.Label(xalign=0, yalign=0)
         label_installed_desc.set_text("Installed Linux kernel and modules")
         label_installed_desc.set_name("label_stack_desc")
-
         label_installed_count = Gtk.Label(xalign=0, yalign=0)
-
         label_installed_count.set_name("label_stack_count")
-
         vbox_search_entry = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-
         search_entry_installed = Gtk.SearchEntry()
         search_entry_installed.set_name("search_entry_installed")
         search_entry_installed.set_placeholder_text("Search installed kernels...")
         search_entry_installed.connect("search_changed", self.flowbox_filter_installed)
-
         vbox_search_entry.append(search_entry_installed)
-
         if reload is True:
             if self.manager_gui.vbox_installed_kernels is not None:
                 for widget in self.manager_gui.vbox_installed_kernels:
                     if widget.get_name() == "label_stack_count":
-                        widget.set_markup(
-                            "<i>%s Installed kernels</i>"
-                            % len(self.manager_gui.installed_kernels)
-                        )
-
+                        widget.set_markup("<i>%s Installed kernels</i>"% len(self.manager_gui.installed_kernels))
                     if widget.get_name() == "scrolled_window_installed":
                         self.manager_gui.vbox_installed_kernels.remove(widget)
-
             scrolled_window_installed = Gtk.ScrolledWindow()
             scrolled_window_installed.set_name("scrolled_window_installed")
-            scrolled_window_installed.set_policy(
-                Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC
-            )
+            scrolled_window_installed.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
             scrolled_window_installed.set_propagate_natural_height(True)
             scrolled_window_installed.set_propagate_natural_width(True)
-
-            self.flowbox_installed = FlowBoxInstalled(
-                installed_kernels=self.manager_gui.installed_kernels,
-                manager_gui=self.manager_gui,
-            )
-            vbox_installed_flowbox = Gtk.Box(
-                orientation=Gtk.Orientation.VERTICAL, spacing=12
-            )
-
+            self.flowbox_installed = FlowBoxInstalled(installed_kernels=self.manager_gui.installed_kernels,manager_gui=self.manager_gui,)
+            vbox_installed_flowbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             # vbox_installed_flowbox.set_halign(align=Gtk.Align.FILL)
-
             vbox_installed_flowbox.append(self.flowbox_installed)
-
             scrolled_window_installed.set_child(vbox_installed_flowbox)
-
             self.manager_gui.vbox_installed_kernels.append(scrolled_window_installed)
-
             if self.manager_gui.vbox_active_installed_kernel is not None:
-                self.manager_gui.vbox_installed_kernels.reorder_child_after(
-                    self.manager_gui.vbox_active_installed_kernel,
-                    scrolled_window_installed,
-                )
+                self.manager_gui.vbox_installed_kernels.reorder_child_after(self.manager_gui.vbox_active_installed_kernel,scrolled_window_installed)
         else:
-            self.manager_gui.vbox_installed_kernels = Gtk.Box(
-                orientation=Gtk.Orientation.VERTICAL, spacing=5
-            )
+            self.manager_gui.vbox_installed_kernels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             self.manager_gui.vbox_installed_kernels.set_name("vbox_installed_kernels")
-
-            self.manager_gui.vbox_active_installed_kernel = Gtk.Box(
-                orientation=Gtk.Orientation.HORIZONTAL, spacing=5
-            )
+            self.manager_gui.vbox_active_installed_kernel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
             self.manager_gui.vbox_active_installed_kernel.set_name("vbox_active_kernel")
-
             label_active_installed_kernel = Gtk.Label(xalign=0.5, yalign=0.5)
             label_active_installed_kernel.set_name("label_active_kernel")
             label_active_installed_kernel.set_selectable(True)
-
-            label_active_installed_kernel.set_markup(
-                "Active kernel: <b>%s</b>" % self.manager_gui.active_kernel
-            )
+            label_active_installed_kernel.set_markup("Active kernel: <b>%s</b>" % self.manager_gui.active_kernel)
             label_active_installed_kernel.set_halign(Gtk.Align.START)
-            self.manager_gui.vbox_active_installed_kernel.append(
-                label_active_installed_kernel
-            )
-
+            self.manager_gui.vbox_active_installed_kernel.append(label_active_installed_kernel)
             scrolled_window_installed = Gtk.ScrolledWindow()
             scrolled_window_installed.set_name("scrolled_window_installed")
-            scrolled_window_installed.set_policy(
-                Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC
-            )
+            scrolled_window_installed.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
             scrolled_window_installed.set_propagate_natural_height(True)
             scrolled_window_installed.set_propagate_natural_width(True)
-
-            label_installed_count.set_markup(
-                "<i>%s Installed kernels</i>" % len(self.manager_gui.installed_kernels)
-            )
-
-            self.flowbox_installed = FlowBoxInstalled(
-                installed_kernels=self.manager_gui.installed_kernels,
-                manager_gui=self.manager_gui,
-            )
-            vbox_installed_flowbox = Gtk.Box(
-                orientation=Gtk.Orientation.VERTICAL, spacing=12
-            )
-
+            label_installed_count.set_markup("<i>%s Installed kernels</i>" % len(self.manager_gui.installed_kernels))
+            self.flowbox_installed = FlowBoxInstalled(installed_kernels=self.manager_gui.installed_kernels,manager_gui=self.manager_gui)
+            vbox_installed_flowbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             # vbox_installed_flowbox.set_halign(align=Gtk.Align.FILL)
-
             vbox_installed_flowbox.append(self.flowbox_installed)
-
             scrolled_window_installed.set_child(vbox_installed_flowbox)
-
             # self.manager_gui.vbox_installed_kernels.append(label_installed_title)
             self.manager_gui.vbox_installed_kernels.append(vbox_header)
             self.manager_gui.vbox_installed_kernels.append(label_installed_desc)
             self.manager_gui.vbox_installed_kernels.append(label_installed_count)
             self.manager_gui.vbox_installed_kernels.append(vbox_search_entry)
             self.manager_gui.vbox_installed_kernels.append(scrolled_window_installed)
-            self.manager_gui.vbox_installed_kernels.append(
-                self.manager_gui.vbox_active_installed_kernel
-            )
-
-            self.manager_gui.stack.add_titled(
-                self.manager_gui.vbox_installed_kernels, "Installed", "Installed"
-            )
+            self.manager_gui.vbox_installed_kernels.append(self.manager_gui.vbox_active_installed_kernel)
+            self.manager_gui.stack.add_titled(self.manager_gui.vbox_installed_kernels, "Installed", "Installed")
 
     def add_official_kernels_to_stack(self, reload):
         if reload is True:
@@ -188,15 +98,11 @@ class KernelStack:
             for kernel in fn.supported_kernels_dict:
                 vbox_flowbox = None
                 stack_child = self.manager_gui.stack.get_child_by_name(kernel)
-
                 if stack_child is not None:
                     for stack_widget in stack_child:
                         if stack_widget.get_name() == "scrolled_window_official":
                             scrolled_window_official = stack_widget
-                            vbox_flowbox = (
-                                scrolled_window_official.get_child().get_child()
-                            )
-
+                            vbox_flowbox = (scrolled_window_official.get_child().get_child())
                             for widget in vbox_flowbox:
                                 widget.remove_all()
 
@@ -207,19 +113,14 @@ class KernelStack:
                         "official",
                     )
                     self.flowbox_stacks.append(self.flowbox_official_kernel)
-
                     vbox_flowbox.append(self.flowbox_official_kernel)
 
                 # while self.manager_gui.default_context.pending():
                 #     self.manager_gui.default_context.iteration(True)
         else:
             for kernel in fn.supported_kernels_dict:
-                self.manager_gui.vbox_kernels = Gtk.Box(
-                    orientation=Gtk.Orientation.VERTICAL, spacing=5
-                )
-
+                self.manager_gui.vbox_kernels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
                 self.manager_gui.vbox_kernels.set_name("stack_%s" % kernel)
-
                 hbox_sep_kernels = Gtk.Box(
                     orientation=Gtk.Orientation.VERTICAL, spacing=10
                 )

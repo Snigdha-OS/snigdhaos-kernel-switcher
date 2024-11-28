@@ -4,7 +4,7 @@ import libs.functions as fn
 from ui.ProgressWindow import ProgressWindow
 from ui.MessageWindow import MessageWindow
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gio, GLib
+from gi.repository import Gtk, Gio
 
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
