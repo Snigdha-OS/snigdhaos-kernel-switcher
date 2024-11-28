@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Snigdha OS Kernel Switcher
+GenericName=Snigdha OS Kernel Switcher
+X-GNOME-FullName=Snigdha OS Kernel Switcher
+Comment=Snigdha OS Kernel Switcher - Add/Remove Linux kernels
+Exec=/usr/bin/snigdhaos-kernel-switcher
+Icon=snigdhaos-kernel-switcher-tux
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;Utility;Settings;X-GNOME-Settings-Panel;X-GNOME-SystemSettings;X-Unity-Settings-Panel;X-XFCE-SettingsDialog;X-XFCE-SystemSettings;
+Keywords=kernel;tool;system
+StartupNotify=true
